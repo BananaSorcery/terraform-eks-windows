@@ -14,3 +14,6 @@ win_desired_size  = "2"
 win_max_size      = "2"
 win_min_size      = "2"
 win_instance_type = "t3.small"
+
+###
+node_host_key_name = "eks-terraform-key"
