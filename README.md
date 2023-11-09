@@ -1,3 +1,6 @@
+########################################################################################
+REF: https://github.com/aws-samples/private-eks-for-windows-workloads-with-terraform.git
+########################################################################################
 # private-eks-for-windows-workloads-with-terraform
 grep -rH "hau-s3-tfstate" . | xargs sed -i 's/hau-s3-tfstate/hau-s3-tfstate/g'
 This is a sample repository for the accompanying AWS Container Blog Post [Running Windows workloads on a private EKS cluster](https://aws.amazon.com/blogs/containers/running-windows-workloads-on-a-private-eks-cluster/).  
