@@ -27,8 +27,7 @@ Temporary Items
 
 # Local .terraform directories
 **/.terraform/*
-**/.terraform/
-main.tf
+
 
 # .tfstate files
 *.tfstate
