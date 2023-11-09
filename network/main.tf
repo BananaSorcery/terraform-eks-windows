@@ -2,7 +2,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "3.72.0"
+      version = "5.3.0"
     }
   }
 }
@@ -12,10 +12,10 @@ provider "aws" {
 //Modify the bucket and dynamoDB table that are used by Terraform
 terraform {
   backend "s3" {
-    bucket         = "DOC-EXAMPLE-BUCKET"
+    bucket         = "hau-s3-tfstate"
     key            = "network.tfstate"
-    region         = "eu-central-1"
-    dynamodb_table = "private-windows-eks-tf-lock"
+    region         = "us-east-2"
+    dynamodb_table = "hau-tfstatelock"
   }
 }
 module "private_vpc" {
@@ -51,10 +51,10 @@ resource "aws_iam_policy" "ec2_eks_terraform_policy" {
   name        = "ec2_eks_terraform_policy"
   path        = "/"
   description = "Policy to create EKS cluster with Windows and Linux Nodes"
-  policy      = "${file("bastion_host_policy.json")}"
+  policy      = file("bastion_host_policy.json")
 }
 resource "aws_iam_role" "ec2_eks_role" {
-  name = "ec2_eks_role_terraform"
+  name                = "ec2_eks_role_terraform"
   managed_policy_arns = [resource.aws_iam_policy.ec2_eks_terraform_policy.arn]
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -72,17 +72,18 @@ resource "aws_iam_role" "ec2_eks_role" {
 }
 
 module "ec2_instance" {
-  source                 = "terraform-aws-modules/ec2-instance/aws"
-  version                = "~> 3.0"
-  name                   = "bastion-host"
-  ami                    = data.aws_ami.amazon-linux-2.id
-  instance_type          = "t2.micro"
-  key_name               = var.bastion_host_key_name
-  monitoring             = false
-  vpc_security_group_ids = [aws_security_group.allow_ssh.id]
-  subnet_id              = module.public_vpc.public_subnets[0]
-  iam_instance_profile = aws_iam_instance_profile.ec2_eks_terraform.name
-  user_data = <<EOF
+  source                      = "terraform-aws-modules/ec2-instance/aws"
+  version                     = "~> 3.0"
+  name                        = "bastion-host"
+  ami                         = data.aws_ami.amazon-linux-2.id
+  instance_type               = "t2.micro"
+  key_name                    = var.bastion_host_key_name
+  monitoring                  = false
+  vpc_security_group_ids      = [aws_security_group.allow_ssh.id]
+  subnet_id                   = module.public_vpc.public_subnets[0]
+  associate_public_ip_address = true
+  iam_instance_profile        = aws_iam_instance_profile.ec2_eks_terraform.name
+  user_data                   = <<EOF
     #!/bin/bash
     sudo yum install -y yum-utils
     sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
@@ -102,11 +103,11 @@ resource "aws_security_group" "allow_ssh" {
   vpc_id      = module.public_vpc.vpc_id
 
   ingress {
-    description     = "SSH from VPC"
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    cidr_blocks     = var.ssh_bastion_cidr
+    description = "SSH from VPC"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = var.ssh_bastion_cidr
   }
 
   egress {

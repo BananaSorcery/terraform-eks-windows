@@ -1,5 +1,5 @@
 # private-eks-for-windows-workloads-with-terraform
-
+grep -rH "hau-s3-tfstate" . | xargs sed -i 's/hau-s3-tfstate/hau-s3-tfstate/g'
 This is a sample repository for the accompanying AWS Container Blog Post [Running Windows workloads on a private EKS cluster](https://aws.amazon.com/blogs/containers/running-windows-workloads-on-a-private-eks-cluster/).  
 
 This repository provides a Terraform implementation that deploys an Amazon EKS cluster in a private VPC and deploys Windows and Linux worker nodes into the cluster. The private VPC and EKS cluster are deployed via a bastion host in a public VPC that can access the private VPC via VPC peering. The public VPC and bastion host setup is part of this repository as well.
@@ -38,9 +38,9 @@ This performs the deployment of the VPC including the setup of the bastion host 
       //Modify the bucket and dynamoDB table that are used by Terraform
       terraform {
         backend "s3" {
-          bucket         = "DOC-EXAMPLE-BUCKET"
+          bucket         = "hau-s3-tfstate"
           key            = "network.tfstate"
-          region         = "eu-central-1"
+          region         = "us-east-1"
           dynamodb_table = "private-windows-eks-tf-lock"
         }
       }
@@ -86,9 +86,9 @@ $ ssh ec2-user@<out_bastion_public_ip> -i <location_of_private_key>
    //Modify the bucket and dynamoDB table that are used by Terraform
    terraform {
      backend "s3" {
-       bucket         = "DOC-EXAMPLE-BUCKET"
+       bucket         = "hau-s3-tfstate"
        key            = "private-windows-eks.tfstate"
-       region         = "eu-central-1"
+       region         = "us-east-1"
        dynamodb_table = "private-windows-eks-tf-lock"
      }
    }
@@ -96,9 +96,9 @@ $ ssh ec2-user@<out_bastion_public_ip> -i <location_of_private_key>
    data terraform_remote_state "network" {
        backend = "s3"
        config = {
-           bucket = "DOC-EXAMPLE-BUCKET"
+           bucket = "hau-s3-tfstate"
            key = "network.tfstate"
-           region = "eu-central-1"
+           region = "us-east-1"
         }
    }
    ````
@@ -125,7 +125,7 @@ $ terraform apply -var-file main-input.tfvars
 1. After the deployment is done, you can configure the local kubectl on the bastion host to connect to the EKS cluster.
 
 ```bash
-$ aws eks update-kubeconfig --name sample-cluster-01 --region eu-central-1
+$ aws eks update-kubeconfig --name sample-cluster-01 --region us-east-1
 $ kubectl get nodes
 ```
 
@@ -168,13 +168,13 @@ $ terraform destroy -var-file main-input.tfvars
 
 The repository provides the following defaults for the setup:
 
-- region = "eu-central-1"
+- region = "us-east-1"
 - VPC
-  - azs_private = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
+  - azs_private = ["us-east-1a", "us-east-1b", "us-east-1c"]
   - private_subnets = ["10.10.1.0/24", "10.10.2.0/24", "10.10.3.0/24"]
   - vpc_private_cidr = "10.10.0.0/16"
   - vpc_public_cidr = "10.20.0.0/16"
-  - azs_public = ["eu-central-1a"]
+  - azs_public = ["us-east-1a"]
   - public_subnets = ["10.20.1.0/24"]
 
 - EKS cluster

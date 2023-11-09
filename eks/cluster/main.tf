@@ -2,7 +2,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "3.72.0"
+      version = "5.3.0"
     }
   }
 }
@@ -11,39 +11,39 @@ provider "aws" {
 }
 data "aws_caller_identity" "current" {}
 locals {
-    account_id = data.aws_caller_identity.current.account_id
+  account_id = data.aws_caller_identity.current.account_id
 }
 #### Nodegroups - Images
 
 data "aws_ami" "lin_ami" {
-    most_recent = true
-    owners = ["amazon"]
-    filter {
-        name = "name"
-        values = ["amazon-eks-node-${var.eks_cluster_version}-*"]
-    }
+  most_recent = true
+  owners      = ["amazon"]
+  filter {
+    name   = "name"
+    values = ["amazon-eks-node-${var.eks_cluster_version}-*"]
+  }
 }
 data "aws_ami" "win_ami" {
-    most_recent = true
-    owners = ["amazon"]
-    filter {
-        name = "name"
-        values = ["Windows_Server-2019-English-Core-EKS_Optimized-${var.eks_cluster_version}-*"]
-    }
+  most_recent = true
+  owners      = ["amazon"]
+  filter {
+    name   = "name"
+    values = ["Windows_Server-2019-English-Core-EKS_Optimized-${var.eks_cluster_version}-*"]
+  }
 }
 resource "aws_kms_key" "eks" {
   description = "EKS Encryption Key"
 }
 
 module "eks" {
-  source       = "terraform-aws-modules/eks/aws"
-  version = "18.6.0"
-  vpc_id = var.vpc_id
-  cluster_name = var.eks_cluster_name
-  subnet_ids = var.private_subnet_ids
+  source                          = "terraform-aws-modules/eks/aws"
+  version                         = "18.6.0"
+  vpc_id                          = var.vpc_id
+  cluster_name                    = var.eks_cluster_name
+  subnet_ids                      = var.private_subnet_ids
   cluster_enabled_log_types       = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
   cluster_endpoint_private_access = true
-  cluster_endpoint_public_access  = false
+  cluster_endpoint_public_access  = true
   cluster_version                 = var.eks_cluster_version
   cluster_encryption_config = [
     {
@@ -53,7 +53,7 @@ module "eks" {
   ]
   ### Allow SSM access for Nodes
   self_managed_node_group_defaults = {
-    iam_role_additional_policies           = ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"]
+    iam_role_additional_policies = ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"]
   }
   tags = {
     Name = "${var.eks_cluster_name}"
@@ -79,58 +79,58 @@ module "eks" {
     }
     ## Enable access from bastion host to Nodes
     ingress_bastion = {
-      description       = "Allow access from Bastion Host"
-      type              = "ingress"
-      from_port         = 443
-      to_port           = 443
-      protocol          = "tcp"
+      description              = "Allow access from Bastion Host"
+      type                     = "ingress"
+      from_port                = 443
+      to_port                  = 443
+      protocol                 = "tcp"
       source_security_group_id = var.bastion_host_SG_id
-}
+    }
     ## Enable RDP access from bastion host to Nodes
     ingress_bastion_win = {
-      description       = "Allow access from Bastion Host via RDP"
-      type              = "ingress"
-      from_port         = 3389
-      to_port           = 3389
-      protocol          = "tcp"
+      description              = "Allow access from Bastion Host via RDP"
+      type                     = "ingress"
+      from_port                = 3389
+      to_port                  = 3389
+      protocol                 = "tcp"
       source_security_group_id = var.bastion_host_SG_id
-}
-  }
-## Enable access from bastion host to EKS endpoint
-    cluster_security_group_additional_rules = {
-        ingress_bastion = {
-          description       = "Allow access from Bastion Host"
-          type              = "ingress"
-          from_port         = 443
-          to_port           = 443
-          protocol          = "tcp"
-          source_security_group_id = var.bastion_host_SG_id
     }
-      }
-self_managed_node_groups = {
+  }
+  ## Enable access from bastion host to EKS endpoint
+  cluster_security_group_additional_rules = {
+    ingress_bastion = {
+      description              = "Allow access from Bastion Host"
+      type                     = "ingress"
+      from_port                = 443
+      to_port                  = 443
+      protocol                 = "tcp"
+      source_security_group_id = var.bastion_host_SG_id
+    }
+  }
+  self_managed_node_groups = {
     linux = {
-      platform = "linux"
-      name = "linux"
-      public_ip    = false
+      platform      = "linux"
+      name          = "linux"
+      public_ip     = false
       instance_type = var.lin_instance_type
-      key_name = var.node_host_key_name
-      desired_size = var.lin_desired_size
-      max_size = var.lin_max_size
-      min_size = var.lin_min_size
-      ami_id = data.aws_ami.lin_ami.id
+      key_name      = var.node_host_key_name
+      desired_size  = var.lin_desired_size
+      max_size      = var.lin_max_size
+      min_size      = var.lin_min_size
+      ami_id        = data.aws_ami.lin_ami.id
     }
     windows = {
-      platform = "windows"
-      name = "windows"
-      public_ip    = false
+      platform      = "windows"
+      name          = "windows"
+      public_ip     = false
       instance_type = var.win_instance_type
-      key_name = var.node_host_key_name
-      desired_size = var.win_desired_size
-      max_size = var.win_max_size
-      min_size = var.win_min_size
-      ami_id = data.aws_ami.win_ami.id
+      key_name      = var.node_host_key_name
+      desired_size  = var.win_desired_size
+      max_size      = var.win_max_size
+      min_size      = var.win_min_size
+      ami_id        = data.aws_ami.win_ami.id
     }
-}
+  }
 }
 ### Prerequisites for Windows Node enablement
 data "aws_eks_cluster_auth" "this" {
@@ -176,7 +176,7 @@ resource "null_resource" "apply" {
       kubectl apply --kubeconfig <(echo $KUBECONFIG | base64 --decode) -f yaml-templates/vpc-resource-controller-configmap.yaml
     EOT
   }
-    provisioner "local-exec" {
+  provisioner "local-exec" {
     interpreter = ["/bin/bash", "-c"]
     environment = {
       KUBECONFIG = self.triggers.kubeconfig
@@ -218,9 +218,9 @@ resource "aws_vpc_endpoint" "vpce_s3_gw" {
     "${data.aws_route_table.private-b.id}",
     "${data.aws_route_table.private-c.id}"
   ]
-  service_name       = format("com.amazonaws.${var.region}.s3")
-  vpc_endpoint_type  = "Gateway"
-  vpc_id = var.vpc_id
+  service_name      = format("com.amazonaws.${var.region}.s3")
+  vpc_endpoint_type = "Gateway"
+  vpc_id            = var.vpc_id
 }
 resource "aws_vpc_endpoint" "vpce_ec2" {
   policy = jsonencode(
@@ -236,12 +236,12 @@ resource "aws_vpc_endpoint" "vpce_ec2" {
     }
   )
   private_dns_enabled = true
-  
-  security_group_ids = [module.eks.node_security_group_id,module.eks.cluster_security_group_id]
-  service_name = format("com.amazonaws.${var.region}.ec2")
-  subnet_ids = var.private_subnet_ids
-  vpc_endpoint_type = "Interface"
-  vpc_id = var.vpc_id
+
+  security_group_ids = [module.eks.node_security_group_id, module.eks.cluster_security_group_id]
+  service_name       = format("com.amazonaws.${var.region}.ec2")
+  subnet_ids         = var.private_subnet_ids
+  vpc_endpoint_type  = "Interface"
+  vpc_id             = var.vpc_id
 }
 resource "aws_vpc_endpoint" "vpce_logs" {
   policy = jsonencode(
@@ -257,11 +257,11 @@ resource "aws_vpc_endpoint" "vpce_logs" {
     }
   )
   private_dns_enabled = true
-  security_group_ids = [module.eks.node_security_group_id,module.eks.cluster_security_group_id]
-  service_name = format("com.amazonaws.${var.region}.logs")
-  subnet_ids = var.private_subnet_ids
-  vpc_endpoint_type = "Interface"
-  vpc_id = var.vpc_id
+  security_group_ids  = [module.eks.node_security_group_id, module.eks.cluster_security_group_id]
+  service_name        = format("com.amazonaws.${var.region}.logs")
+  subnet_ids          = var.private_subnet_ids
+  vpc_endpoint_type   = "Interface"
+  vpc_id              = var.vpc_id
 }
 resource "aws_vpc_endpoint" "vpce_ecrapi" {
   policy = jsonencode(
@@ -277,11 +277,11 @@ resource "aws_vpc_endpoint" "vpce_ecrapi" {
     }
   )
   private_dns_enabled = true
-  security_group_ids = [module.eks.node_security_group_id,module.eks.cluster_security_group_id]
-  service_name = format("com.amazonaws.${var.region}.ecr.api")
-  subnet_ids = var.private_subnet_ids
-  vpc_endpoint_type = "Interface"
-  vpc_id = var.vpc_id
+  security_group_ids  = [module.eks.node_security_group_id, module.eks.cluster_security_group_id]
+  service_name        = format("com.amazonaws.${var.region}.ecr.api")
+  subnet_ids          = var.private_subnet_ids
+  vpc_endpoint_type   = "Interface"
+  vpc_id              = var.vpc_id
 }
 resource "aws_vpc_endpoint" "vpce_autoscaling" {
   policy = jsonencode(
@@ -297,11 +297,11 @@ resource "aws_vpc_endpoint" "vpce_autoscaling" {
     }
   )
   private_dns_enabled = true
-  security_group_ids = [module.eks.node_security_group_id,module.eks.cluster_security_group_id]
-  service_name = format("com.amazonaws.${var.region}.autoscaling")
-  subnet_ids = var.private_subnet_ids
-  vpc_endpoint_type = "Interface"
-  vpc_id = var.vpc_id
+  security_group_ids  = [module.eks.node_security_group_id, module.eks.cluster_security_group_id]
+  service_name        = format("com.amazonaws.${var.region}.autoscaling")
+  subnet_ids          = var.private_subnet_ids
+  vpc_endpoint_type   = "Interface"
+  vpc_id              = var.vpc_id
 
 }
 
@@ -319,11 +319,11 @@ resource "aws_vpc_endpoint" "vpce_sts" {
     }
   )
   private_dns_enabled = true
-  security_group_ids = [module.eks.node_security_group_id,module.eks.cluster_security_group_id]
-  service_name = format("com.amazonaws.${var.region}.sts")
-  subnet_ids = var.private_subnet_ids
-  vpc_endpoint_type = "Interface"
-  vpc_id = var.vpc_id
+  security_group_ids  = [module.eks.node_security_group_id, module.eks.cluster_security_group_id]
+  service_name        = format("com.amazonaws.${var.region}.sts")
+  subnet_ids          = var.private_subnet_ids
+  vpc_endpoint_type   = "Interface"
+  vpc_id              = var.vpc_id
 
 }
 resource "aws_vpc_endpoint" "vpce_elb" {
@@ -340,11 +340,11 @@ resource "aws_vpc_endpoint" "vpce_elb" {
     }
   )
   private_dns_enabled = true
-  security_group_ids = [module.eks.node_security_group_id,module.eks.cluster_security_group_id]
-  service_name = format("com.amazonaws.${var.region}.elasticloadbalancing")
-  subnet_ids = var.private_subnet_ids
-  vpc_endpoint_type = "Interface"
-  vpc_id = var.vpc_id
+  security_group_ids  = [module.eks.node_security_group_id, module.eks.cluster_security_group_id]
+  service_name        = format("com.amazonaws.${var.region}.elasticloadbalancing")
+  subnet_ids          = var.private_subnet_ids
+  vpc_endpoint_type   = "Interface"
+  vpc_id              = var.vpc_id
 }
 resource "aws_vpc_endpoint" "vpce_ecrdkr" {
   policy = jsonencode(
@@ -360,11 +360,11 @@ resource "aws_vpc_endpoint" "vpce_ecrdkr" {
     }
   )
   private_dns_enabled = true
-  security_group_ids = [module.eks.node_security_group_id,module.eks.cluster_security_group_id]
-  service_name = format("com.amazonaws.${var.region}.ecr.dkr")
-  subnet_ids = var.private_subnet_ids
-  vpc_endpoint_type = "Interface"
-  vpc_id = var.vpc_id
+  security_group_ids  = [module.eks.node_security_group_id, module.eks.cluster_security_group_id]
+  service_name        = format("com.amazonaws.${var.region}.ecr.dkr")
+  subnet_ids          = var.private_subnet_ids
+  vpc_endpoint_type   = "Interface"
+  vpc_id              = var.vpc_id
 }
 ### SSM Access
 resource "aws_vpc_endpoint" "vpce_ec2messages" {
@@ -381,11 +381,11 @@ resource "aws_vpc_endpoint" "vpce_ec2messages" {
     }
   )
   private_dns_enabled = true
-  security_group_ids = [module.eks.node_security_group_id,module.eks.cluster_security_group_id]
-  service_name = format("com.amazonaws.${var.region}.ec2messages")
-  subnet_ids = var.private_subnet_ids
-  vpc_endpoint_type = "Interface"
-  vpc_id = var.vpc_id
+  security_group_ids  = [module.eks.node_security_group_id, module.eks.cluster_security_group_id]
+  service_name        = format("com.amazonaws.${var.region}.ec2messages")
+  subnet_ids          = var.private_subnet_ids
+  vpc_endpoint_type   = "Interface"
+  vpc_id              = var.vpc_id
 }
 
 resource "aws_vpc_endpoint" "vpce_ssm" {
@@ -402,11 +402,11 @@ resource "aws_vpc_endpoint" "vpce_ssm" {
     }
   )
   private_dns_enabled = true
-  security_group_ids = [module.eks.node_security_group_id,module.eks.cluster_security_group_id]
-  service_name = format("com.amazonaws.${var.region}.ssm")
-  subnet_ids = var.private_subnet_ids
-  vpc_endpoint_type = "Interface"
-  vpc_id = var.vpc_id
+  security_group_ids  = [module.eks.node_security_group_id, module.eks.cluster_security_group_id]
+  service_name        = format("com.amazonaws.${var.region}.ssm")
+  subnet_ids          = var.private_subnet_ids
+  vpc_endpoint_type   = "Interface"
+  vpc_id              = var.vpc_id
 }
 
 resource "aws_vpc_endpoint" "vpce_ssmmessages" {
@@ -423,11 +423,11 @@ resource "aws_vpc_endpoint" "vpce_ssmmessages" {
     }
   )
   private_dns_enabled = true
-  security_group_ids = [module.eks.node_security_group_id,module.eks.cluster_security_group_id]
-  service_name = format("com.amazonaws.${var.region}.ssmmessages")
-  subnet_ids = var.private_subnet_ids
-  vpc_endpoint_type = "Interface"
-  vpc_id = var.vpc_id
+  security_group_ids  = [module.eks.node_security_group_id, module.eks.cluster_security_group_id]
+  service_name        = format("com.amazonaws.${var.region}.ssmmessages")
+  subnet_ids          = var.private_subnet_ids
+  vpc_endpoint_type   = "Interface"
+  vpc_id              = var.vpc_id
 
 }
 
